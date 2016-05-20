@@ -11,23 +11,25 @@ validate_log.write("log Opened for writing\n")
 attributeNames = ['ENVIRONMENT', 'APPLICATION', 'LOB', 'REGION', 'AIT', 'APPGROUP']
 
 def main():
-        writeLog("doing Startup tasks...")
         startValidation()
-        writeLog("done with Startup tasks.")
+        writeLog("startValidation() completed.")
 
-        writeLog("doing runTests.")
         runTests()
-        writeLog("done running tests.")
+        writeLog("runTests() completed.")
 
-        writeLog("doing wrapup tasks...")
+        #writeLog("doing wrapup tasks...")
         endValidation()
-        writeLog("done with wrapup tasks.")
-
+        writeLog("endValidation() done.")
+        writeLog("_________________________________________")
         return 0     #success
 
 #formats the xml wrapper for an issue.
 def issue(s, p, m):
-        string = "<issue><severity>" +s+ "</severity><path>" +p+ "</path><message>" +m+ "</message></issue>"
+        string = (
+			"\t<issue>\n\t\t<severity>\n\t\t\t" + s +
+			"\n\t\t</severity>\n\t\t<path>\n\t\t\t" + p +
+			"\n\t\t</path>\n\t\t<message>\n\t\t\t" + m +
+			"\n\t\t</message>\n\t</issue>")
         writeLog(string)
         return string
 
@@ -35,7 +37,7 @@ def issue(s, p, m):
 def startValidation():
         global xmldoc
 
-        print "<validation><issues>"
+        print "<validation>\n\t<issues>"
 
         #test if os environment variable for _SETUP is set.
         try:
@@ -46,6 +48,7 @@ def startValidation():
                 #environment variable doesn't exist.
                 writeLog("using cached xmlFile for testing.")
                 xmldoc = ET.parse("/export/home/gclandorf/geneos/psTemplate/gateway/gateways/gabrielGW64/xmlToValidateAgainst.xml")
+                xmldoc = ET.parse("/export/home/dsobiepan/scripts/py/0.xml")
                 writeLog("File found and parsed sucessfully...")
         else:
                 writeLog("using file from Gateway." )
@@ -60,7 +63,7 @@ def startValidation():
 
 #function called at end, for any cleanup, etc.
 def endValidation():
-        print "</issues></validation>"
+        print "\t</issues>\n</validation>"
 
 #function that runs a series of tests on the xml. custom tests can be defined and should be put in here.
 def runTests():
@@ -68,8 +71,9 @@ def runTests():
         #Or maybe it should be kept specific to Attribute testing the way it is, as that makes sense on MEFolders && MEs.
         writeLog("made it into runTests")
 
-
-        checkManagedEntitiesAttributes()
+        mainManagedEntitiesSection = xmldoc.find("./managedEntities")
+        path = "/gateway/managedEntities"
+        checkMENodeAttrs(mainManagedEntitiesSection, path)
 
 
         writeLog("completed Running tests")
@@ -78,7 +82,7 @@ def runTests():
 def writeLog(message):
         validate_log.write(message+"\n")
 
-def checkManagedEntitiesAttributes():
+def checkMEAttrs():
         writeLog("made it into processManagedEntities")
         mainManagedEntitiesSection = xmldoc.find("./managedEntities")
         writeLog("foundMainSection")
@@ -89,20 +93,19 @@ def checkManagedEntitiesAttributes():
         managedEntityID=1
         managedEntityGroupID=1
         for child in mainManagedEntitiesSection:
-                writeLog("checking another child")
                 if child.tag == "managedEntityGroup":
-                        writeLog("It's a folder")
-                        writeLog("found a Managed Entity Group - MEGroupID is " + str(managedEntityGroupID))
+                        #writeLog("It's a folder")
+                        writeLog("checkMEAttrs: Group - MEGroupID is " + str(managedEntityGroupID))
                         #child is a managedEntityGroup / Folder
 
                         #append this childNodes info onto its parents path to create its xpath
                         childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityGroupID))
 
-                        checkMENodeForAttributes(child, childPath)
+                        checkMENodeAttrs(child, childPath)
                         managedEntityGroupID+=1
                 elif child.tag == "managedEntity" :
-                        writeLog("It's an ME")
-                        writeLog("found a Managed Entity - MEID is " + str(managedEntityID))
+                        #writeLog("It's an ME")
+                        writeLog("checkMEAttrs: ME - id is " + str(managedEntityID))
                         # child is a plain ManagedEntity
 
                         childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityID))
@@ -113,32 +116,29 @@ def checkManagedEntitiesAttributes():
 ## Processes an ME Folder,
 # @Args: MEFolder - the xmlNode of the MEGroup to be worked on
 #        Path - the GSE Error compliant XPath to the parentNode of MEFolder
-def checkMENodeForAttributes(MENode, path):
-        writeLog("Checking MEFolder")
+def checkMENodeAttrs(MENode, path):
+        #writeLog("Checking MEFolder")
         #check if attributes are good on this one folder or managedEntity.
         #other Attribute Tests should be added here.
 
-        checkHasAttributes(MENode, path)
-        checkAttributesMatchStandards(MENode, path)
-
-        #other Attribute Tests should be added here.
 
         # iterate over children - which are either MEGroups or MEs proper.
         managedEntityID=1
         managedEntityGroupID=1
         for child in MENode:
                 if child.tag == "managedEntityGroup":
-                        writeLog("found a Managed Entity Group - MEGroupID is " + str(managedEntityGroupID))
+                        writeLog("checkMENodeAttrs: Group - MEGroupID is " + str(managedEntityGroupID))
                         #child is a managedEntityGroup / Folder
 
                         #append this childNodes info onto its parents path to create its xpath
                         childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityGroupID))
 
-                        #recursive call to deal with subfolder.
-                        checkMENodeForAttributes(child, childPath)
+                        #recursive call to deal wit s(child, childPath)
+                        processME(child, childPath)
+                        checkMENodeAttrs(child, childPath)
                         managedEntityGroupID+=1
                 elif child.tag == "managedEntity" :
-                        writeLog("found a Managed Entity - MEID is " + str(managedEntityID))
+                        writeLog("checkMENodeAttrs: ME - id is " + str(managedEntityID))
                         # child is a plain ManagedEntity
 
                         childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityID))
@@ -146,6 +146,11 @@ def checkMENodeForAttributes(MENode, path):
                         processME(child, childPath)
                         managedEntityID+=1
 
+						
+						
+						
+						
+						
 def processME(MENode, path):
         #check if attributes are good.
         #other Attribute Tests should be added here.
@@ -169,24 +174,26 @@ def checkAttributesMatchStandards(MENode, path):
 
         writeLog("now checking attributes against standards.")
         #attributes = MENode.findall("./attribute")
-        #@BUG!!! This will find nested sub-children attributes, rather than letting the children handle their own.
-        # -- should instead loop over children and only check immediate child attributes.
-        # -- this matters because it leads to bad xpaths for ME children.
         attributes = findAttributes(MENode)
         for attribute in attributes:
                 attributeName = attribute.get('name')
                 attributeValue = attribute.text
-                writeLog("Found an attribute: " + attributeName)
-                writeLog("checking attribute...")
+                writeLog("Found attribute: " + attributeName)
+                #writeLog("checking attribute...")
                 checkAttribute(attributeName, attributeNames, path)
                 writeLog("checked attribute sucessfully.")
+
+				
+				
+				
+				
 
 def checkAttribute(attribute, AttributeList, path):
         if attribute in AttributeList :
                 #then there's no issue, do no further checks
                 return
         writeLog("running checkAttribute, checking Against list.")
-        closestMatch = checkAttributeSimilarToStandardAttribute(attribute, AttributeList)
+        closestMatch = compareToStdAttr(attribute, AttributeList)
         writeLog("Found Closest Matching attribute.")
         if closestMatch != None:
                 writeLog("Found an issue, it's close to a standard, Error!")
@@ -196,7 +203,7 @@ def checkAttribute(attribute, AttributeList, path):
                 print issue("Warning", path, "Attribute " + attribute + " doesn't match any standard attribute.")
         return
 
-def checkAttributeSimilarToStandardAttribute(attribute, attributeList):
+def compareToStdAttr(attribute, attributeList):
         writeLog("Checking against list... for closest match capitolized and non...")
         (dist, attributeMatched) = closestMatch(attribute, attributeList)
         writeLog("distances calculated..")
