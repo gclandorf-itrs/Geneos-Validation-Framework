@@ -47,7 +47,6 @@ def startValidation():
         except:
                 #environment variable doesn't exist.
                 writeLog("using cached xmlFile for testing.")
-                xmldoc = ET.parse("/export/home/gclandorf/geneos/psTemplate/gateway/gateways/gabrielGW64/xmlToValidateAgainst.xml")
                 xmldoc = ET.parse("/export/home/dsobiepan/scripts/py/0.xml")
                 writeLog("File found and parsed sucessfully...")
         else:
@@ -81,37 +80,6 @@ def runTests():
 #puts a message in the logfile.
 def writeLog(message):
         validate_log.write(message+"\n")
-
-def checkMEAttrs():
-        writeLog("made it into processManagedEntities")
-        mainManagedEntitiesSection = xmldoc.find("./managedEntities")
-        writeLog("foundMainSection")
-
-        path= "/gateway/managedEntities"
-
-        # iterate over children - which are either MEGroups or MEs proper.
-        managedEntityID=1
-        managedEntityGroupID=1
-        for child in mainManagedEntitiesSection:
-                if child.tag == "managedEntityGroup":
-                        #writeLog("It's a folder")
-                        writeLog("checkMEAttrs: Group - MEGroupID is " + str(managedEntityGroupID))
-                        #child is a managedEntityGroup / Folder
-
-                        #append this childNodes info onto its parents path to create its xpath
-                        childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityGroupID))
-
-                        checkMENodeAttrs(child, childPath)
-                        managedEntityGroupID+=1
-                elif child.tag == "managedEntity" :
-                        #writeLog("It's an ME")
-                        writeLog("checkMEAttrs: ME - id is " + str(managedEntityID))
-                        # child is a plain ManagedEntity
-
-                        childPath = ('%s/%s[%i]' % (path, child.tag, managedEntityID))
-
-                        processME(child, childPath)
-                        managedEntityID+=1
 
 ## Processes an ME Folder,
 # @Args: MEFolder - the xmlNode of the MEGroup to be worked on
@@ -182,11 +150,6 @@ def checkAttributesMatchStandards(MENode, path):
                 #writeLog("checking attribute...")
                 checkAttribute(attributeName, attributeNames, path)
                 writeLog("checked attribute sucessfully.")
-
-				
-				
-				
-				
 
 def checkAttribute(attribute, AttributeList, path):
         if attribute in AttributeList :
