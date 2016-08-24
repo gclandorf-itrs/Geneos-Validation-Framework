@@ -2,71 +2,41 @@
 import xml.etree.ElementTree as ET
 import os, sys
 import shutil
-import validation_tests
+import validate_tests as vt
 
-validation_tests.init()
+vt.init()
 validate_log = open("validate.log", "w")
 validate_log.write("log Opened for writing\n")
-
-tag_values = {
-    'include': ("includes", 1),
-    'probe': ("probes", 1),
-    'managedEntity': ("managedEntities", 1), 
-    'type': ("types", 1),
-    'sampler': ("samplers", 1),
-    'samplerInclude': ("samplerIncludes", 1),
-    'action': ("actions", 1),
-    'effect': ("effects", 1),
-    'command': ("commands", 1),
-    'scheduledCommand': ("scheduledCommands", 1), #no groups, fits name schm
-    'rule': ("rules", 1), 
-    'alert': ("alerting", 0),
-    'activeTime': ("activeTimes", 1),
-    'timeSeries': ("dataSets", 1),
-    'hotStandby': ("hotStandby", 0),
-    'databaseLogging': ("databaseLogging", 0),
-    'tickerEventLogger': ("tickerEventLogger", 0),
-    'authentication': ("authentication", 0),
-    'environment': ("environments", 1),
-    'auditOutput': ("auditOutputs", 1), #no groups but has plural/nonplurals
-    'knowledgeBase': ("knowledgeBase", 0),
-    'persistence': ("persistence", 0),
-    'staticVariables': ("staticVars", 0),
-    'expressReport': ("expressReports", 0),
-    'selfAnnouncingProbe': ("selfAnnouncingProbes", 0),
-    'exportedData': ("exportedData", 0),
-    'importedData': ("importedData", 0),
-    'publishing': ("publishing", 0),
-    'operatingEnvironment': ("operatingEnvironment", 0),
-    }
-
+""" kickoff
+    the main function of this file.
+	Uses parameters passed from validate_setup
+	and assigns values to global vars while
+	opening and parsing the gateway setup xml file.
 	
-def main():
-        global gatewaysetup, testsToUse
-        #gwfile = "/export/home/dsobiepan/opt/gateway/"
-        #gwfile = gwfile + "gateways/david_test_gw/gateway.setup.xml"
-        gwfile = "gateway.setup01.xml"
-        gatewaysetup = ET.parse(gwfile)
-        sectionToTest = "managedEntity";
-        testsToUse = "processME";
-        testCheck()
-        parser(sectionToTest)
-        return 0
+"""
+def kickoff(sectionToTest, inputtedTest, setupFile, testPerNode):
+        global gatewaysetup, testToUse
+        testToUse = inputtedTest
+        gatewaysetup = ET.parse(setupFile)
+        parser(sectionToTest, testPerNode)
+        print "Test complete."
+        sys.exit()
 
 """ parser        
     Traversal of a Section's groups and individual nodes.
     Uses XPath and numeric count for iteration through the tree.
     Goes item through item based off order from the gateway setup.
 """        
-def parser(sectionType):
-        SectionTree = gatewaysetup.find("./" +  tag_values[sectionType][0])
+def parser(sectionType, testPerNode):
+        SectionTree = gatewaysetup.find("./" +  vt.tag_values[sectionType][0])
         path = "/gateway/" + sectionType
         #print "path: " + path 
-        if tag_values[sectionType][1]:
-            print "Value is tag_values[sectionType][1], going to traverse"
+        if vt.tag_values[sectionType][1] & testPerNode:
+            print "Performing test via generic traverseSection iterator"
             traverseSection(SectionTree, path, sectionType)
-        else :
-            print "Not a group based section."
+        else:
+            print "Performing test without generic iterator"
+            runTestOnNode(SectionTree, path)
         return
 
 """ traverseSection        
@@ -103,21 +73,19 @@ def traverseSection(SectionTree, path, sectionType):
 	the functions are callable.
 """		
 def runTestOnNode(node, nodePath):
-    #print "This is where tests go"
-    tests = testsToUse.split(";");
-    for test in tests:
-        if callable(validation_tests.test_dict[test]):
-            validation_tests.test_dict[test](node, nodePath);
-        else:
-           print "No test called " + test + " located."
+    if callable(vt.test_dict[testToUse]):
+        vt.test_dict[testToUse](node, nodePath)
+    else:
+        print "No test called " + testToUse + " located."
+        print "How did this get through so far in the script??"
     return
 """ testCheck
 	Debug function that outputs all available test functions.
 """    
 def testCheck():
-    for x in validation_tests.test_dict:
+    for x in vt.test_dict:
         print x
-        print ( callable(validation_tests.test_dict[x]))
+        #print ( callable(vt.test_dict[x]))
 
 """ startValidation
     Original start function, which would use a cache and environment variable
@@ -164,8 +132,3 @@ def runTests():
         path = "/gateway/managedEntities"
         checkMENodeAttrs(mainManagedEntitiesSection, path)
         writeLog("completed Running tests")
-
-if __name__ == '__main__':
-        status = main()
-
-        sys.exit(status)

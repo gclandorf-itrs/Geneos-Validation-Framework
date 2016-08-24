@@ -3,19 +3,51 @@ import xml.etree.ElementTree as ET
 import os, sys
 import shutil
 
-#The set of attributes to be enforced.
-#this can be adjusted as deisred.
-attributeNames = ['ENVIRONMENT', 'APPLICATION', 'LOB', 'REGION', 'AIT', 'APPGROUP', 'Location', 'Env']
+#Universal Values
 validate_log = open("validate.log", "w")
-validate_log.write("log Opened for writing\n")
-#puts a message in the logfile.
+tag_values = {
+    'include': ("includes", 1),
+    'probe': ("probes", 1),
+    'managedEntity': ("managedEntities", 1), 
+    'type': ("types", 1),
+    'sampler': ("samplers", 1),
+    'samplerInclude': ("samplerIncludes", 1),
+    'action': ("actions", 1),
+    'effect': ("effects", 1),
+    'command': ("commands", 1),
+    'scheduledCommand': ("scheduledCommands", 1), #no groups, fits name schm
+    'rule': ("rules", 1), 
+    'alert': ("alerting", 0),
+    'activeTime': ("activeTimes", 1),
+    'timeSeries': ("dataSets", 1),
+    'hotStandby': ("hotStandby", 0),
+    'databaseLogging': ("databaseLogging", 0),
+    'tickerEventLogger': ("tickerEventLogger", 0),
+    'authentication': ("authentication", 0),
+    'environment': ("environments", 1),
+    'auditOutput': ("auditOutputs", 1), #no groups but has plural/nonplurals
+    'knowledgeBase': ("knowledgeBase", 0),
+    'persistence': ("persistence", 0),
+    'staticVariables': ("staticVars", 0),
+    'expressReport': ("expressReports", 0),
+    'selfAnnouncingProbe': ("selfAnnouncingProbes", 0),
+    'exportedData': ("exportedData", 0),
+    'importedData': ("importedData", 0),
+    'publishing': ("publishing", 0),
+    'operatingEnvironment': ("operatingEnvironment", 0),
+    }
 
+#Insert Specific Test Values Here
+#attributesOnME
+#The set of attributes to be enforced.
+attributeNames = ['ENVIRONMENT', 'APPLICATION', 'LOB', 'REGION', 'AIT', 'APPGROUP', 'Location', 'Env']	
+	
 """ init
     Defines the hash test_dict , which contains available test functions.
 """
 def	init():
     global test_dict
-    test_dict = {'processME':processME}
+    test_dict = {'attributesOnME':attributesOnME}
     
 """ writeLog 
     Simple message writer to the log file.
@@ -35,10 +67,12 @@ def issue(severity, path, message):
     writeLog(string)
     return string
 
-""" processME
+#Place custom tests here.
+
+""" attributesOnME
     ME Test to check if a node has attributes and if it matches outlined standards.
 """ 
-def processME(MENode, path):
+def attributesOnME(MENode, path):
     hasAttr = checkHasAttributes(MENode, path)
     if hasAttr: 
         checkAttributesMatchStandards(MENode, path)
@@ -46,7 +80,9 @@ def processME(MENode, path):
 def checkHasAttributes(MENode, path):
     attribute = MENode.findall("./attribute")
     if not attribute:
-        print issue("Warning", path, "ManagedEntity or ManagedEntity Group without attribute specified.")
+        writeLog(issue("Warning", path, 
+		    "ManagedEntity or ManagedEntity Group " + 
+            "without attribute specified."))
         return 0
     return 1
 
@@ -78,17 +114,19 @@ def checkAttribute(attribute, AttributeList, path):
         writeLog("Found Closest Matching attribute.")
         if closestMatch != None:
                 writeLog("Found an issue, it's close to a standard, Error!")
-                print issue("Error", path, 
+                writeLog(issue("Error", path, 
                 "Attribute '" + attribute + 
-                "' is similar to an attribute in the standardized set: '" + 
-                closestMatch + "', please conform to the standard.")
+                "' is similar to an attribute in the standardized set: '" +
+                closestMatch + "', please conform to the standard."))
         else:
-                writeLog("didn't recognize it, only warning.")
-                print issue("Warning", path, "Attribute " + attribute + " doesn't match any standard attribute.")
+            writeLog("didn't recognize it, only warning.")
+            writeLog(issue("Warning", path, 
+                       "Attribute " + attribute + 
+                       " doesn't match any standard attribute."))
         return
 
 def compareToStdAttr(attribute, attributeList):
-        writeLog("Checking against list... for closest match capitolized and non...")
+        writeLog("Checking against list for closest & Non match capitalized ")
         (dist, attributeMatched) = closestMatch(attribute, attributeList)
         writeLog("distances calculated..")
 
